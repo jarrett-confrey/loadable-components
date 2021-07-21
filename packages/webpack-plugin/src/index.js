@@ -39,8 +39,8 @@ class LoadablePlugin {
       return {
         id: chunk.id,
         files: [...chunk.files],
-      };
-    });
+      }
+    })
 
     const result = JSON.stringify(stats, null, 2)
 
@@ -122,6 +122,22 @@ class LoadablePlugin {
               }
             },
           )
+        })
+
+        compiler.hooks.done.tap(name, stats => {
+          const {assets} = stats.toJson({all: false, assets: true})
+          const outputFolder = this.compiler.options.output.path
+          const outputFile = nodePath.resolve(outputFolder, this.opts.filename)
+          const fileContents = fs.readFileSync(outputFile)
+          const loadableStats = JSON.parse(fileContents)
+          Object.values(loadableStats.namedChunkGroups).forEach(namedChunkGroup => {
+            namedChunkGroup.assets.forEach(namedChunkGroupAsset => {
+              const {integrity} = assets.find(asset => asset.name === namedChunkGroupAsset.name) || {}
+              namedChunkGroupAsset.integrity = integrity
+            })
+          })
+          const loadableStatsJson = JSON.stringify(loadableStats, null, 2)
+          fs.writeFileSync(outputFile, loadableStatsJson)
         })
       }
     }
