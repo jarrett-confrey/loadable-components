@@ -124,16 +124,19 @@ class LoadablePlugin {
           )
         })
 
+        // update loadable-stats.json with integrity from webpack-subresource-integrity if available
         compiler.hooks.done.tap(name, stats => {
-          const {assets} = stats.toJson({all: false, assets: true})
+          const statsAssets = stats.toJson({ all: false, assets: true }).assets
           const outputFolder = this.compiler.options.output.path
           const outputFile = nodePath.resolve(outputFolder, this.opts.filename)
           const fileContents = fs.readFileSync(outputFile)
           const loadableStats = JSON.parse(fileContents)
           Object.values(loadableStats.namedChunkGroups).forEach(namedChunkGroup => {
             namedChunkGroup.assets.forEach(namedChunkGroupAsset => {
-              const {integrity} = assets.find(asset => asset.name === namedChunkGroupAsset.name) || {}
-              namedChunkGroupAsset.integrity = integrity
+              const statsAsset = statsAssets.find(asset => asset.name === namedChunkGroupAsset.name)
+              if (typeof statsAsset === 'object' && statsAsset.integrity) {
+                namedChunkGroupAsset.integrity = statsAsset.integrity
+              }
             })
           })
           const loadableStatsJson = JSON.stringify(loadableStats, null, 2)
